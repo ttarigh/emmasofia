@@ -94,10 +94,29 @@
         .mute-icon, .unmute-icon {
             display: block;
         }
+        
+        .play-btn {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            font-size: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 100;
+        }
     </style>
 </head>
 <body>
-    <video id="video-background" autoplay loop muted></video>
+    <video id="video-background" autoplay loop muted playsinline></video>
     
     <button id="unmute-btn" class="unmute-btn" aria-label="Unmute">
         <svg class="mute-icon" viewBox="0 0 24 24" width="24" height="24">
@@ -134,8 +153,36 @@
             
             videoElement.load();
             
-            // Add click event to unmute button
-            unmuteBtn.addEventListener('click', function() {
+            // Handle mobile autoplay issues
+            videoElement.addEventListener('canplaythrough', function() {
+                try {
+                    videoElement.play().catch(function(error) {
+                        console.log("Autoplay prevented:", error);
+                        // Add a play button if autoplay is blocked
+                        if (!document.getElementById('play-btn')) {
+                            const playBtn = document.createElement('button');
+                            playBtn.id = 'play-btn';
+                            playBtn.className = 'play-btn';
+                            playBtn.innerHTML = '▶';
+                            playBtn.setAttribute('aria-label', 'Play');
+                            document.body.appendChild(playBtn);
+                            
+                            playBtn.addEventListener('click', function() {
+                                videoElement.play();
+                                playBtn.style.display = 'none';
+                            });
+                        }
+                    });
+                } catch (e) {
+                    console.log("Play error:", e);
+                }
+            });
+            
+            // Add click event to unmute button - use a different approach for mobile
+            unmuteBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
                 if (videoElement.muted) {
                     videoElement.muted = false;
                     unmuteBtn.querySelector('.mute-icon').style.display = 'none';
@@ -144,6 +191,11 @@
                     videoElement.muted = true;
                     unmuteBtn.querySelector('.mute-icon').style.display = 'block';
                     unmuteBtn.querySelector('.unmute-icon').style.display = 'none';
+                }
+                
+                // Try to resume playback if it was paused
+                if (videoElement.paused) {
+                    videoElement.play().catch(e => console.log("Couldn't resume playback:", e));
                 }
             });
         });
